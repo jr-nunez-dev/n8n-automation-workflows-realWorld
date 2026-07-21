@@ -1,0 +1,307 @@
+{
+  "name": "BC Intermittent Issue Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "55f6833d-1166-4bfe-8ff0-5beecd6eac33",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "intermittent",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        0
+      ],
+      "id": "4a881914-ce7e-4c7d-93a8-d13dad5a7519",
+      "name": "intermittent?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fbfdc5e-ec4f-47ba-9b86-91790d8db22f",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "00015e99-9ed8-4ba6-aad2-66ada0f04b68",
+              "name": "description",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        -112
+      ],
+      "id": "6cc489ed-3640-4890-a07c-05b70dc5cf2f",
+      "name": "editData"
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "value": "10151",
+          "mode": "list",
+          "cachedResultName": "IT Support"
+        },
+        "issueType": {
+          "__rl": true,
+          "value": "10629",
+          "mode": "list",
+          "cachedResultName": "[Incident] System Downtime"
+        },
+        "summary": "={{ $json.subject }}",
+        "additionalFields": {
+          "description": "={{ $json.description }}"
+        }
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -112
+      ],
+      "id": "6783f005-1c2b-4e36-b918-f0811c003390",
+      "name": "createIssue",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "SuD4jhL6Xfetj8lJ",
+          "name": "Jira SW Cloud account Sanbox"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        400,
+        80
+      ],
+      "id": "285da90f-6560-48ff-a9ce-50282d2fbbaf",
+      "name": "notIntermittent"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        624,
+        48
+      ],
+      "id": "a4af9370-ada8-4bfb-8532-9c12542a9c48",
+      "name": "reply"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "66787d29-03f7-40ed-bd13-4ecfc08ca782",
+              "leftValue": "={{ $json.headers['in-reply-to'] }}",
+              "rightValue": "={{ $json.threadId }}",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        400,
+        -96
+      ],
+      "id": "e4646147-2255-41d6-8a26-f439b958b252",
+      "name": "fresh email?"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "maxResults": 1,
+        "filters": {
+          "labelIds": [
+            "Label_8663571737587485244"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -128,
+        -256
+      ],
+      "id": "d0ad9a36-64ae-4b8c-a875-cc350f215f00",
+      "name": "johnrex",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kFfkCbkYLkBXwU9P",
+          "name": "JohnrexOAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "maxResults": 1,
+        "filters": {
+          "labelIds": [
+            "Label_2272028879666386065"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -128,
+        -64
+      ],
+      "id": "e9c906bd-a476-467e-b309-e40086702797",
+      "name": "jam",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "aYujKCgDPdic4tbF",
+          "name": "Jam-OAuth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "intermittent?": {
+      "main": [
+        [
+          {
+            "node": "fresh email?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "notIntermittent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "editData": {
+      "main": [
+        [
+          {
+            "node": "createIssue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fresh email?": {
+      "main": [
+        [
+          {
+            "node": "editData",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "johnrex": {
+      "main": [
+        [
+          {
+            "node": "intermittent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "jam": {
+      "main": [
+        [
+          {
+            "node": "intermittent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": [
+    {
+      "name": "nocAutomations"
+    }
+  ]
+}

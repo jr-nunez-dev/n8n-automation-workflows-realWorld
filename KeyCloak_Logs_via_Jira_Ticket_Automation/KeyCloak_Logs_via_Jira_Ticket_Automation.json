@@ -1,0 +1,501 @@
+{
+  "name": "KeyCloak Logs via Jira Ticket Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "events": [
+          "jira:issue_created",
+          "jira:issue_updated"
+        ],
+        "additionalFields": {
+          "filter": "project = CICT AND type = \"Service Request\" AND summary ~ \"GoFiber High Login Count Alert\" ORDER BY created DESC"
+        }
+      },
+      "type": "n8n-nodes-base.jiraTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -640,
+        -240
+      ],
+      "id": "d6b61c0c-da3b-4513-b9cb-5e2520fd0831",
+      "name": "jiraTrigger",
+      "webhookId": "ef568e72-ba9c-4b5a-85c6-127b49d6dea1",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "taewY0pYea5crzCA",
+          "name": "Jira SW Cloud a-johnrex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Grab the base objects depending on how the node received the data\nconst dataJson = $input.item.json;\nconst rawDescription = dataJson.issue?.fields?.description || dataJson.fields?.description;\n\n// 🟢 STANDARD FIELD CAPTURE (Now including Status!)\nconst ticketKey = dataJson.issue?.key || dataJson.key || \"Missing\";\nconst ticketSummary = dataJson.issue?.fields?.summary || dataJson.fields?.summary || \"Missing Title\";\nconst assigneeName = dataJson.issue?.fields?.assignee?.displayName || dataJson.fields?.assignee?.displayName || \"Unassigned\";\nconst reporterName = dataJson.issue?.fields?.reporter?.displayName || dataJson.fields?.reporter?.displayName || \"Missing\";\nconst ticketStatus = dataJson.issue?.fields?.status?.name || dataJson.fields?.status?.name || \"Missing Status\";\n\n// 2. Deep clean the text into regular text for the numbers\nfunction extractPlainText(node) {\n  if (!node) return '';\n  if (typeof node === 'string') return node;\n  if (node.type === 'text' && node.text) return node.text;\n  if (node.content && Array.isArray(node.content)) {\n    return node.content.map(extractPlainText).join(' ');\n  }\n  return '';\n}\nconst cleanText = extractPlainText(rawDescription);\n\n// 3. Flatten the whole object to a raw string strictly to hunt down the hyperlinked email\nconst flatTextForEmail = JSON.stringify(rawDescription);\n\n// 4. Bulletproof Regex Patterns (Upgraded accountRegex to handle possible commas safely)\nconst emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/i;\nconst accountRegex = /Account\\s*Number\\s*:\\s*([\\d,\\s]+)/i;\nconst userIdRegex = /User\\s*ID\\s*:\\s*([a-f0-9-]+)/i;\nconst loginCountRegex = /Login\\s*Count\\s*:\\s*(\\d+)/i;\n\n// 5. Extract values safely from their best respective sources\nconst extractedEmail = flatTextForEmail.match(emailRegex)?.[1] || \"Missing\";\nconst extractedAccount = cleanText.match(accountRegex)?.[1]?.trim() || \"Missing\";\nconst extractedUser = cleanText.match(userIdRegex)?.[1] || \"Missing\";\nconst extractedLogin = cleanText.match(loginCountRegex)?.[1] || \"0\";\n\n// 🟢 CREATE THE ROW BASELINE ID TO MATCH THE MULTI-ACCOUNT PATH\nconst uniqueRowId = extractedUser !== \"Missing\" \n  ? `${ticketKey}_${extractedUser}` \n  : `${ticketKey}_idx_1`;\n\n// 6. Return everything split cleanly into individual outputs\nreturn {\n  baselineId: uniqueRowId,       // 🌟 New Unique Identification Match Key\n  ticketKey: ticketKey,\n  summary: ticketSummary,\n  assignee: assigneeName,\n  reporter: reporterName,\n  status: ticketStatus,       \n  email: extractedEmail,\n  accountNumber: extractedAccount,\n  userId: extractedUser,\n  loginCount: parseInt(extractedLogin, 10)\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -128
+      ],
+      "id": "264b8b43-503e-478a-a15a-be99ccc1972d",
+      "name": "1AccoountFlagged"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1366908575,
+          "mode": "list",
+          "cachedResultName": "UAM - Keycloak Tickets",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit#gid=1366908575"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "baselineId"
+          ],
+          "schema": [
+            {
+              "id": "No.",
+              "displayName": "No.",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "System Ticket",
+              "displayName": "System Ticket",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "E-mail Address:",
+              "displayName": "E-mail Address:",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account Number:",
+              "displayName": "Account Number:",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User ID:",
+              "displayName": "User ID:",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Login Count:",
+              "displayName": "Login Count:",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assignee",
+              "displayName": "Assignee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reporter",
+              "displayName": "Reporter",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "baselineId",
+              "displayName": "baselineId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        192,
+        -128
+      ],
+      "id": "fab7a86b-0808-40e5-9de3-b69be22bde5b",
+      "name": "saveData",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "59e5b4f9-0bb2-4e00-8edc-0e590db53da7",
+              "leftValue": "={{ parseInt($json.issue.fields.summary.match(/(\\d+)\\s+Accounts\\s+Flagged/)?.[1] || 1, 10) }}",
+              "rightValue": 2,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -432,
+        -240
+      ],
+      "id": "62431d6a-4283-4dce-82c8-bb11803d86ba",
+      "name": "Is Multi-Account Ticket?"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// 1. Grab the base objects from the incoming item\nconst dataJson = $input.item.json;\nconst rawDescription = dataJson.issue?.fields?.description || dataJson.fields?.description;\n\n// 🟢 CORE FIELDS\nconst ticketKey = dataJson.issue?.key || dataJson.key || \"Missing\";\nconst ticketSummary = dataJson.issue?.fields?.summary || dataJson.fields?.summary || \"Missing Title\";\nconst assigneeName = dataJson.issue?.fields?.assignee?.displayName || dataJson.fields?.assignee?.displayName || \"Unassigned\";\nconst reporterName = dataJson.issue?.fields?.reporter?.displayName || dataJson.fields?.reporter?.displayName || \"Missing\";\nconst ticketStatus = dataJson.issue?.fields?.status?.name || dataJson.fields?.status?.name || \"Missing Status\";\n\n// 2. Deep clean description text\nfunction extractPlainText(node) {\n  if (!node) return '';\n  if (typeof node === 'string') return node;\n  if (node.type === 'text' && node.text) return node.text;\n  if (node.content && Array.isArray(node.content)) {\n    return node.content.map(extractPlainText).join(' ');\n  }\n  return '';\n}\nconst cleanText = extractPlainText(rawDescription);\n\n// 3. Split by dashed divider lines\nconst accountBlocks = cleanText.split(/-{10,}/);\nconst multiRows = [];\n\n// 4. Regex Patterns\nconst emailRegex = /E-mail\\s*Address\\s*:\\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/i;\nconst accountRegex = /Account\\s*Number\\s*:\\s*([\\d,\\s]+)/i; \nconst userIdRegex = /User\\s*ID\\s*:\\s*([a-f0-9-]+)/i;\nconst loginCountRegex = /Login\\s*Count\\s*:\\s*(\\d+)/i;\n\n// 5. Loop through and create distinct structures\nlet counter = 1;\nfor (const block of accountBlocks) {\n  if (userIdRegex.test(block) || accountRegex.test(block)) {\n    \n    const extractedEmail = block.match(emailRegex)?.[1]?.trim() || \"Missing\";\n    const extractedAccount = block.match(accountRegex)?.[1]?.trim() || \"Missing\";\n    const extractedUser = block.match(userIdRegex)?.[1]?.trim() || \"Missing\";\n    const extractedLogin = block.match(loginCountRegex)?.[1]?.trim() || \"0\";\n\n    // 🟢 CREATE A BULLETPROOF UNIQUE ID FOR THE ROW\n    // Format will look like: CICT-213089_4184cc4d... (or counter fallback)\n    const uniqueRowId = extractedUser !== \"Missing\" \n      ? `${ticketKey}_${extractedUser}` \n      : `${ticketKey}_idx_${counter}`;\n\n    multiRows.push({\n      baselineId: uniqueRowId, // 🌟 New unique column key\n      ticketKey: ticketKey,\n      summary: ticketSummary,\n      assignee: assigneeName,\n      reporter: reporterName,\n      status: ticketStatus,\n      email: extractedEmail,\n      accountNumber: extractedAccount,\n      userId: extractedUser,\n      loginCount: parseInt(extractedLogin, 10)\n    });\n    counter++;\n  }\n}\n\nreturn {\n  accountList: multiRows\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -352
+      ],
+      "id": "45d4fd29-0403-4f62-b716-a2f8792fc8a3",
+      "name": "multipleAccountFlagged"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "accountList",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -352
+      ],
+      "id": "653529a5-1db2-444a-a89a-e30530ac99a2",
+      "name": "splitData"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2d30ee1e-b11a-4530-9285-0de39660684f",
+              "name": "System Ticket",
+              "value": "={{ $json.ticketKey }}",
+              "type": "string"
+            },
+            {
+              "id": "2052e2cf-d00a-4179-97d9-9b3c5488fdb7",
+              "name": "Subject",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "e97a183b-9cdc-4f35-91a8-7e8d4b84bdbc",
+              "name": "E-mail Address:",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "08290fbb-8bdf-4fbc-a592-aae3a94b8f94",
+              "name": "Account Number:",
+              "value": "={{ $json.accountNumber }}",
+              "type": "string"
+            },
+            {
+              "id": "ea82010e-24bd-4710-81f9-8dbd3dbe2a4e",
+              "name": "User ID:",
+              "value": "={{ $json.userId }}",
+              "type": "string"
+            },
+            {
+              "id": "c8f022cd-d5fd-4ea4-9fd5-c1bb5fb75914",
+              "name": "Login Count:",
+              "value": "={{ $json.loginCount }}",
+              "type": "string"
+            },
+            {
+              "id": "bf7df1cc-1d8f-493e-b85d-b8488f1e8af0",
+              "name": "Assignee",
+              "value": "={{ $json.assignee }}",
+              "type": "string"
+            },
+            {
+              "id": "7b67bca7-6000-4328-8bcd-c24d7c1613d0",
+              "name": "Reporter",
+              "value": "={{ $json.reporter }}",
+              "type": "string"
+            },
+            {
+              "id": "3abfad90-c934-492b-81f1-be99ba781890",
+              "name": "Status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "fed765c7-5727-4908-96dd-c3e184b046fe",
+              "name": "baselineId",
+              "value": "={{ $json.baselineId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        -128
+      ],
+      "id": "ddbefd2a-4b9e-48e9-916d-9c5153fb1e16",
+      "name": "setDataForSingle"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c7946770-230f-4b94-bbd6-e60784d3d0aa",
+              "name": "System Ticket",
+              "value": "={{ $json.ticketKey }}",
+              "type": "string"
+            },
+            {
+              "id": "737dea34-28b7-40a2-90d1-b0b831290c12",
+              "name": "Subject",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "d2257205-379f-45f3-8f86-1be0bddb76d1",
+              "name": "E-mail Address:",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "2f694a95-f0f5-4c76-8497-5c917a97c72e",
+              "name": "Account Number:",
+              "value": "={{ $json.accountNumber }}",
+              "type": "string"
+            },
+            {
+              "id": "b559daed-d939-414c-b6fc-c0b86d7e934b",
+              "name": "User ID:",
+              "value": "={{ $json.userId }}",
+              "type": "string"
+            },
+            {
+              "id": "44c7e258-74ea-45bc-8670-e708d1a1b033",
+              "name": "Login Count:",
+              "value": "={{ $json.loginCount }}",
+              "type": "number"
+            },
+            {
+              "id": "3402e40d-f9b5-4813-b0da-a42209bfe7be",
+              "name": "Assignee",
+              "value": "={{ $json.assignee }}",
+              "type": "string"
+            },
+            {
+              "id": "cd6ed80b-38b4-40a7-b507-6163bc2cd049",
+              "name": "Reporter",
+              "value": "={{ $json.reporter }}",
+              "type": "string"
+            },
+            {
+              "id": "cd21f228-c530-4273-85b9-a2b978237857",
+              "name": "Status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "d4dfe2ce-54cc-40bf-90e5-ecbbd9857856",
+              "name": "baselineId",
+              "value": "={{ $json.baselineId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        -352
+      ],
+      "id": "8aa3a1d7-e90a-4f5e-a98c-846f7df8ff60",
+      "name": "setDataForMultiple"
+    }
+  ],
+  "connections": {
+    "jiraTrigger": {
+      "main": [
+        [
+          {
+            "node": "Is Multi-Account Ticket?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1AccoountFlagged": {
+      "main": [
+        [
+          {
+            "node": "setDataForSingle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Multi-Account Ticket?": {
+      "main": [
+        [
+          {
+            "node": "multipleAccountFlagged",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "1AccoountFlagged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "multipleAccountFlagged": {
+      "main": [
+        [
+          {
+            "node": "splitData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "splitData": {
+      "main": [
+        [
+          {
+            "node": "setDataForMultiple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "setDataForSingle": {
+      "main": [
+        [
+          {
+            "node": "saveData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "setDataForMultiple": {
+      "main": [
+        [
+          {
+            "node": "saveData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": [
+    {
+      "name": "nocAutomations"
+    }
+  ]
+}

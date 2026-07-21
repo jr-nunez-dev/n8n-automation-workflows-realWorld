@@ -1,0 +1,676 @@
+{
+  "name": "Business Center Logs Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\n\nreturn inputItems.map(item => {\n    // Safely checks for both Get Many node structure and Issue Created Webhook structure\n    const issue = item.json?.issue || item.json || {};\n    const changelog = item.json?.changelog || null; // <--- Safely grab the background change history\n    const fields = issue.fields || {};\n    const description = fields.description || \"\";\n    const summary = fields.summary || \"\";\n    \n    // ----------------------------------------------------\n    // 🛡️ RACE-CONDITION DEFENSE FILTER (Case-Insensitive)\n    // ----------------------------------------------------\n    let isTrueCancellation = false;\n    const currentStatus = (fields.status?.name || \"\").toUpperCase();\n    \n    // Check changelog items thoroughly by converting values to UPPERCASE\n    if (changelog && changelog.items && Array.isArray(changelog.items)) {\n        const statusChange = changelog.items.find(change => change.field === 'status');\n        if (statusChange) {\n            const toStringVal = String(statusChange.toString || \"\").toUpperCase();\n            if (toStringVal === 'CANCELLED') {\n                isTrueCancellation = true;\n            }\n        }\n    } \n    \n    // Safety fallback: if background status is Cancelled, force true so it always runs the search!\n    if (currentStatus === 'CANCELLED') {\n        isTrueCancellation = true;\n    }\n    // ----------------------------------------------------\n\n    // 1. Regex for Location Name\n    const locationMatch = description.match(/(?:SLZ|NCR|VIZMIN|CNLZ|NLZ)\\s*-\\s*.*?\\s*\\(.*?\\)/);\n    const extractedLocation = locationMatch ? locationMatch[0].trim() : \"Location Not Found\";\n\n    // 2. 🆕 UPGRADED: Strict Regex for Date & Time (Ignores punctuation/pipes/spaces)\n    // Matches patterns like \"07/10/2026 6:15 AM\", \"7/10/2026 14:07 PM\", etc.\n    const timestampMatch = description.match(/is currently Down as of\\s*(\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}(?::\\d{2})?\\s*(?:AM|PM|am|pm)?)/);\n    const extractedTimestamp = timestampMatch ? timestampMatch[1].trim() : \"Timestamp Not Found\";\n\n    // 3. Extract only the Date part\n    let extractedDate = \"Date Not Found\";\n    if (extractedTimestamp !== \"Timestamp Not Found\") {\n        extractedDate = extractedTimestamp.split(\" \")[0]; \n    }\n\n    // 4. Dynamic Support Group Lookup based on Region Prefix\n    let supportGroup = \"Not Specified\";\n    const textToSearch = (summary + \" \" + description).toUpperCase();\n\n    if (textToSearch.includes(\"CNLZ\")) {\n        supportGroup = \"IT Technical Central\";\n    } else if (textToSearch.includes(\"NLZ\")) {\n        supportGroup = \"IT Technical North\";\n    } else if (textToSearch.includes(\"SLZ\")) {\n        supportGroup = \"IT Technical South\";\n    } else if (textToSearch.includes(\"NCR\")) {\n        supportGroup = \"IT Technical NCR\";\n    } else if (textToSearch.includes(\"VIZMIN\")) {\n        supportGroup = \"IT Technical Visayas/Mindanao\";\n    }\n\n    // 5. Dynamic Sheet Name targeting based on Ticket Creation Month\n    let targetSheetName = \"Business Centers July 2026\"; \n    if (fields.created) {\n        const createdDate = new Date(fields.created);\n        const monthName = createdDate.toLocaleString('en-US', { month: 'long' }); \n        const yearNumber = createdDate.getFullYear(); \n        targetSheetName = `Business Centers ${monthName} ${yearNumber}`; \n    }\n\n    // 6. Calculate Total Downtime (Forced to Philippine Time)\n    let totalDowntime = \"N/A\";\n    let formattedEndDate = \"N/A\";\n    const rawEndDate = fields.customfield_10290 || null; \n\n    if (extractedTimestamp !== \"Timestamp Not Found\" && rawEndDate) {\n        const cleanStartStr = extractedTimestamp.replace(/\\u00a0/g, ' ').trim();\n        const startFormat = cleanStartStr.includes(':') && cleanStartStr.split(':').length === 3 ? 'M/d/yyyy h:mm:ss a' : 'M/d/yyyy h:mm a';\n        const start = DateTime.fromFormat(cleanStartStr, startFormat, { zone: 'Asia/Manila' });\n        \n        let end;\n        if (typeof rawEndDate === 'string' && rawEndDate.includes('T')) {\n            end = DateTime.fromISO(rawEndDate).setZone('Asia/Manila');\n        } else {\n            end = DateTime.fromJSDate(new Date(rawEndDate)).setZone('Asia/Manila');\n        }\n\n        if (start.isValid && end.isValid) {\n            const totalMinutes = Math.floor(end.diff(start, 'minutes').minutes);\n            if (totalMinutes >= 0) {\n                const hours = Math.floor(totalMinutes / 60);\n                const remainingMinutes = totalMinutes % 60;\n                totalDowntime = hours > 0 ? `${hours}h ${remainingMinutes}m` : `${remainingMinutes}m`;\n            } else {\n                totalDowntime = \"Negative Duration (Check Timestamps)\";\n            }\n            formattedEndDate = end.toFormat('M/d/yyyy h:mm:ss a');\n        }\n    }\n\n    return {\n        json: {\n            ticketKey: issue.key || \"N/A\",\n            summary: summary || \"No Summary\",\n            assignee: fields.assignee?.displayName || \"Unassigned\",\n            supportGroup: supportGroup,                                     \n            extractedLocation: extractedLocation,   \n            extractedTimestamp: extractedTimestamp, \n            extractedDate: extractedDate,           \n            endDate: formattedEndDate,              \n            totalDowntime: totalDowntime,           \n            status: fields.status?.name || \"Unknown\",\n            isTrueCancellation: isTrueCancellation, \n            targetSheetName: targetSheetName \n        }\n    };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        112
+      ],
+      "id": "201d7d26-7f8a-4b74-980e-e375a354e7b4",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "916c6214-5902-48d9-ab91-eb43ada327a3",
+              "name": "Ticket ID",
+              "value": "={{ $json.ticketKey }}",
+              "type": "string"
+            },
+            {
+              "id": "004b7e53-2e09-48bd-8e16-080b69dd14f7",
+              "name": "Date",
+              "value": "={{ $json.extractedDate }}",
+              "type": "string"
+            },
+            {
+              "id": "ca6b63aa-f2a4-42d9-bbae-30eeb885b045",
+              "name": "Device Type",
+              "value": "Network",
+              "type": "string"
+            },
+            {
+              "id": "aae9218a-f731-47ad-b21a-8ef4a82ef6a5",
+              "name": "Network Device",
+              "value": "={{ $json.extractedLocation }}",
+              "type": "string"
+            },
+            {
+              "id": "139145ff-eaee-4f9c-ac91-b4815a611cf5",
+              "name": "Description",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "55d97d6c-161e-47f9-b366-b08d2e250c57",
+              "name": "Status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "9c08ca0a-d25b-4565-a8d0-8c793f544f86",
+              "name": "Support Group",
+              "value": "={{ $json.supportGroup }}",
+              "type": "string"
+            },
+            {
+              "id": "344d23a6-5190-4d52-ba2c-301a5a30b81a",
+              "name": "Assignee",
+              "value": "={{ $json.assignee }}",
+              "type": "string"
+            },
+            {
+              "id": "e2a6ce92-50a0-4ea9-982e-d2f822ce2ec8",
+              "name": "Start of Downtime",
+              "value": "={{ $('Jira Trigger').item.json.issue.fields.customfield_10289?.toDateTime().format('MM/dd/yyyy hh:mm:ss a') ?? $json.extractedTimestamp?.toDateTime().format('MM/dd/yyyy hh:mm:ss a') }}",
+              "type": "string"
+            },
+            {
+              "id": "804bafa2-0ee2-4798-8a0d-0cae44f24021",
+              "name": "Affected IT Domain",
+              "value": "NETWORK",
+              "type": "string"
+            },
+            {
+              "id": "9acdcd1e-99e4-4e2b-b8b0-c52076b62b87",
+              "name": "Affected IT System",
+              "value": "NETWORK",
+              "type": "string"
+            },
+            {
+              "id": "9359cd07-62b2-4c88-96bb-00c1cd04c4c4",
+              "name": "Business Impact",
+              "value": "UNPLANNED & BUSINESS AFFECTING",
+              "type": "string"
+            },
+            {
+              "id": "5d0cd507-6785-4c1e-8217-ac240e509137",
+              "name": "Time Restored",
+              "value": "={{ $json.endDate }}",
+              "type": "string"
+            },
+            {
+              "id": "8c9f57e3-f704-4883-a208-456a4065be7c",
+              "name": "Total Downtime",
+              "value": "={{ $json.totalDowntime }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        304
+      ],
+      "id": "b2152be0-d166-41af-8840-0ff29df0f797",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "events": [
+          "jira:issue_created",
+          "jira:issue_updated"
+        ],
+        "additionalFields": {
+          "filter": "project = CICT  AND type = \"[Incident] System Downtime\"  AND \"incident application/system classification\" IN aqlFunction(\"\\\"Name\\\" IN (\\\"Business Center\\\")\") AND reporter = 557058:f58131cb-b67d-43c7-b30d-6b58d40bd077  ORDER BY created DESC"
+        }
+      },
+      "type": "n8n-nodes-base.jiraTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "47a245f4-09cf-4549-9bb7-04c08a232ed1",
+      "name": "Jira Trigger",
+      "webhookId": "2774b457-07ba-4731-b5fa-2b460a973671",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "taewY0pYea5crzCA",
+          "name": "Jira SW Cloud a-johnrex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Code in JavaScript').item.json.targetSheetName }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Ticket ID": "={{ $json['Ticket ID'] }}",
+            "Date": "={{ $json.Date }}",
+            "Device Type": "={{ $json['Device Type'] }}",
+            "Network Device": "={{ $json['Network Device'] }}",
+            "Description": "={{ $json.Description }}",
+            "Status": "={{ $json.Status }}",
+            "Affected IT Domain": "={{ $json['Affected IT Domain'] }}",
+            "Affected IT System": "={{ $json['Affected IT System'] }}",
+            "Business Impact": "={{ $json['Business Impact'] }}",
+            "Support Group": "={{ $json['Support Group'] }}",
+            "Assignee": "={{ $json.Assignee }}",
+            "Start of Downtime": "={{ $json['Start of Downtime'] }}",
+            "Time Restored": "={{ $json['Time Restored'] }}",
+            "Total Downtime": "={{ $json['Total Downtime'] }}"
+          },
+          "matchingColumns": [
+            "Ticket ID"
+          ],
+          "schema": [
+            {
+              "id": "Sensor",
+              "displayName": "Sensor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Ticket ID",
+              "displayName": "Ticket ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Device Type",
+              "displayName": "Device Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Network Device",
+              "displayName": "Network Device",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Affected IT Domain",
+              "displayName": "Affected IT Domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Affected IT System",
+              "displayName": "Affected IT System",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Business Impact",
+              "displayName": "Business Impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Diagnosis",
+              "displayName": "Diagnosis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Support Group",
+              "displayName": "Support Group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assignee",
+              "displayName": "Assignee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start of Downtime",
+              "displayName": "Start of Downtime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time Restored",
+              "displayName": "Time Restored",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Downtime",
+              "displayName": "Total Downtime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Monitored By",
+              "displayName": "Monitored By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        304
+      ],
+      "id": "c957b4d7-0beb-4fd9-bdf7-723f66c8ffdd",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c185d2ff-876b-45e7-aa6a-6167a78ddba9",
+                    "leftValue": "={{ $json.isTrueCancellation }}",
+                    "rightValue": "Cancelled",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f4c29df7-3091-414b-882f-93a6f1970a29",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "Cancelled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        288,
+        96
+      ],
+      "id": "750b9b7d-c6a1-4204-bdda-204ab1f64b68",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Code in JavaScript').item.json.targetSheetName }}",
+          "mode": "name"
+        },
+        "startIndex": "={{ $('Get row(s) in sheet').first().json.row_number }}"
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1248,
+        -192
+      ],
+      "id": "a8ab6fdc-8bdd-4613-89ee-8b6431bb1b28",
+      "name": "Delete rows or columns from sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Code in JavaScript').item.json.targetSheetName }}",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Ticket ID",
+              "lookupValue": "={{ $json.ticketKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        -64
+      ],
+      "id": "860f77a4-2ab8-4606-b4df-d8e7d76622a8",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        576,
+        -64
+      ],
+      "id": "15097eee-f364-4ef3-a265-4fc2fb32a940",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9fe87594-faef-426c-9c23-a6bcb06186aa",
+              "leftValue": "={{ $('Get row(s) in sheet').first().json.row_number.toString() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1024,
+        -64
+      ],
+      "id": "c717a0ad-b004-4378-b0c0-8ee2b1af3614",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        48
+      ],
+      "id": "83d4ca6e-26bd-429c-83a0-a6c44935cf51",
+      "name": "No Output Fallback"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        576,
+        112
+      ],
+      "id": "f6e4e914-e357-4376-89c4-3529fc1f428d",
+      "name": "Prevents Cancelled to Append"
+    }
+  ],
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jira Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prevents Cancelled to Append",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Delete rows or columns from sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Output Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Taipei",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "nocAutomations"
+    }
+  ]
+}

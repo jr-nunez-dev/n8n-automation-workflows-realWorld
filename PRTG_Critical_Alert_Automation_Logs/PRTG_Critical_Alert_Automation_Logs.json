@@ -1,0 +1,424 @@
+{
+  "name": "PRTG Critical Alert Automation Logs",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// 1. Fetch raw data from the 'Get an Issue' node\nconst fields = $input.item.json.fields || {};\nconst summary = fields.summary || \"\";\n\n// 2. Check for Keyword Matches in Summary & Assign custom Diagnosis\nconst lowerSummary = summary.toLowerCase();\nlet mappedDiagnosis = null;\n\nif (\n  lowerSummary.includes(\"meminfo\") || \n  lowerSummary.includes(\"ssh meminfo\") || \n  lowerSummary.includes(\"physical memory\")\n) {\n  mappedDiagnosis = \"High Memory Utilization\";\n} else if (lowerSummary.includes(\"disks\") || lowerSummary.includes(\"disk\")) {\n  mappedDiagnosis = \"Disk Utilization\";\n} else if (lowerSummary.includes(\"cpu\") || lowerSummary.includes(\"cpu load\")) {\n  mappedDiagnosis = \"High CPU Utilization\";\n} else if (\n  lowerSummary.includes(\"http\") || \n  lowerSummary.includes(\"https\") || \n  lowerSummary.includes(\"web api\") || \n  lowerSummary.includes(\"api\")\n) {\n  mappedDiagnosis = \"HTTP Downtime\";\n}\n\n// CRITICAL FILTER: Drop unrelated tickets instantly\nif (!mappedDiagnosis) {\n  return []; \n}\n\n// 3. Extract Core Fields\nconst desc = fields.description || \"\";\nconst key = $input.item.json.key || \"\";\nconst status = fields.status?.name || \"\";\nconst assigneeName = fields.assignee?.displayName || \"Unassigned\";\n\n// 4. Extract Description Details via Regex\nconst startOfDowntimeMatch = desc.match(/as of\\s+([\\d/: ]+\\s*(?:AM|PM)?)/i);\nconst dateMatch = desc.match(/\\d{1,2}\\/\\d{1,2}\\/\\d{4}/);\n\nlet serverDevice = null;\nconst serverDeviceMatch = desc.match(/The\\s+([\\s\\S]*?)\\s+usage/i);\nif (serverDeviceMatch) {\n  serverDevice = serverDeviceMatch[1].trim();\n} else {\n  const firstLine = desc.split('\\n')[0] || \"\";\n  serverDevice = firstLine.length > 50 ? \"Web Service/API\" : firstLine.trim() || \"HTTP Endpoint\";\n}\n\nconst serverIdMatch = desc.match(/sensor\\.htm\\?id=(\\d+)/);\n\n// 5. ANTI-BOT COMMENT SCANNER (Super Flexible Regex Matching)\nconst comments = fields.comment?.comments || [];\nlet latestCommentText = \"\";\nlet latestCommentAuthor = \"\";\nlet timeRestoredStr = null;\n\nfor (let i = comments.length - 1; i >= 0; i--) {\n  const authorName = comments[i].author?.displayName || \"\";\n  const currentCommentText = comments[i].body || \"\";\n  \n  if (authorName.toLowerCase().includes(\"automation\")) {\n    continue; \n  }\n  \n  // FLEXIBLE REGEX: Captures dates like M/D/YYYY followed by any time string and optional AM/PM\n  const flexibleMatch = currentCommentText.match(/\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}(?::\\d{2})?\\s*(?:AM|PM)?/i);\n  \n  if (flexibleMatch) {\n    timeRestoredStr = flexibleMatch[0];\n    latestCommentText = currentCommentText;\n    latestCommentAuthor = authorName;\n    break; \n  }\n}\n\n// 6. ULTRA-FLEXIBLE DATE PARSER\nfunction parseAnything(dateStr) {\n  if (!dateStr) return null;\n\n  // Clean extra spaces\n  const cleanStr = dateStr.trim().replace(/\\s+/g, ' ');\n  \n  // Extract date component and time component\n  const parts = cleanStr.split(' ');\n  const dateParts = parts[0].split('/');\n  if (dateParts.length !== 3) return null;\n\n  const month = parseInt(dateParts[0], 10) - 1;\n  const day = parseInt(dateParts[1], 10);\n  const year = parseInt(dateParts[2], 10);\n\n  // Default time fallbacks\n  let hours = 0, minutes = 0, seconds = 0;\n  \n  if (parts[1]) {\n    const timeParts = parts[1].split(':');\n    hours = parseInt(timeParts[0], 10) || 0;\n    minutes = parseInt(timeParts[1], 10) || 0;\n    seconds = parseInt(timeParts[2], 10) || 0;\n  }\n\n  // Check for AM/PM modifiers anywhere in the string\n  const upperStr = cleanStr.toUpperCase();\n  const isPM = upperStr.includes('PM');\n  const isAM = upperStr.includes('AM');\n\n  if (isPM && hours < 12) hours += 12;\n  if (isAM && hours === 12) hours = 0;\n\n  const generatedDate = new Date(year, month, day, hours, minutes, seconds);\n  return isNaN(generatedDate.getTime()) ? null : generatedDate;\n}\n\n// 7. Compute Total Downtime Duration\nlet formattedTotalDowntime = \"\";\nif (startOfDowntimeMatch && timeRestoredStr) {\n  const startCommenced = parseAnything(startOfDowntimeMatch[1]);\n  const endRestored = parseAnything(timeRestoredStr);\n  \n  if (startCommenced && endRestored) {\n    const diffMs = endRestored - startCommenced;\n    if (diffMs > 0) {\n      const totalMinutes = Math.floor(diffMs / 1000 / 60);\n      const hours = Math.floor(totalMinutes / 60);\n      const minutes = totalMinutes % 60;\n      \n      if (hours > 0) {\n        formattedTotalDowntime = `${hours}Hours, ${minutes} Mins`;\n      } else {\n        formattedTotalDowntime = `${minutes}Mins`;\n      }\n    } else {\n      formattedTotalDowntime = \"0Mins\";\n    }\n  }\n}\n\n// 8. Dynamically Generate Target Sheet Name\nlet targetSheetName = \"\";\nconst targetDateStr = dateMatch ? dateMatch[0] : startOfDowntimeMatch ? startOfDowntimeMatch[1].split(' ')[0] : null;\n\nif (targetDateStr && targetDateStr.includes('/')) {\n  const alertDate = parseAnything(targetDateStr + \" 00:00:00 AM\") || new Date();\n  const monthName = alertDate.toLocaleString('default', { month: 'long' });\n  const year = alertDate.getFullYear();\n  targetSheetName = `PRTG Critical Alerts ${monthName} ${year}`;\n} else {\n  const now = new Date();\n  const monthName = now.toLocaleString('default', { month: 'long' });\n  targetSheetName = `PRTG Critical Alerts ${monthName} ${now.getFullYear()}`;\n}\n\nreturn {\n  json: {\n    ticket_key: key,\n    summary: summary,\n    status: status,\n    assignee_name: assigneeName,\n    start_of_downtime: startOfDowntimeMatch ? startOfDowntimeMatch[1].trim() : null,\n    date: dateMatch ? dateMatch[0] : (targetDateStr || null),\n    server_device: serverDevice,            \n    server_id: serverIdMatch ? serverIdMatch[1] : null,\n    diagnosis: mappedDiagnosis,\n    latest_comment: latestCommentText,\n    time_restored: timeRestoredStr,            \n    total_downtime: formattedTotalDowntime,  \n    target_sheet_name: targetSheetName\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -32
+      ],
+      "id": "f4603287-ba26-42aa-b6f0-5d18aa83ef37",
+      "name": "Code in JavaScript",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "664ad001-03d2-4fe9-91f3-884dbc07cdf3",
+              "name": "Ticket ID",
+              "value": "={{ $json.ticket_key }}",
+              "type": "string"
+            },
+            {
+              "id": "fbd55157-3f20-4de1-b2db-c012377f46aa",
+              "name": "Server Device",
+              "value": "={{ $json.server_device }}",
+              "type": "string"
+            },
+            {
+              "id": "ea779c73-e848-4d69-aa71-2f011e32fd17",
+              "name": "Description",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "57aa8d68-4d2d-4e46-9232-114536065d15",
+              "name": "Date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "814dc8ad-2e2a-44f6-87cd-0eb4f3437e56",
+              "name": "Status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "f21472e5-26e5-4051-b090-410e04871151",
+              "name": "Start of Downtime",
+              "value": "={{ $json.start_of_downtime }}",
+              "type": "string"
+            },
+            {
+              "id": "b6532435-51c3-4963-8163-d6529581927d",
+              "name": "Sensor",
+              "value": "={{ $json.server_id }}",
+              "type": "string"
+            },
+            {
+              "id": "82bdb387-dcae-4622-a901-36f18c20908f",
+              "name": "Assignee",
+              "value": "={{ $json.assignee_name }}",
+              "type": "string"
+            },
+            {
+              "id": "7b7d32dd-38f7-4df1-83df-636e5a3195b8",
+              "name": "Diagnosis",
+              "value": "={{ $json.diagnosis }}",
+              "type": "string"
+            },
+            {
+              "id": "a2b223f7-2c38-4f43-9101-97482391f588",
+              "name": "Affected IT Domain",
+              "value": "Server and storage",
+              "type": "string"
+            },
+            {
+              "id": "a6be387c-5262-4df4-b4ae-dfef8b85d0ac",
+              "name": "Affected IT System",
+              "value": "Server and storage",
+              "type": "string"
+            },
+            {
+              "id": "2ffd1bd7-e972-4fa4-b6c0-f99f04b34acb",
+              "name": "Business Impact",
+              "value": "UNPLANNED & NON-BUSINESS AFFECTING",
+              "type": "string"
+            },
+            {
+              "id": "835362e6-0f5f-4d7a-babd-3c95a4211711",
+              "name": "Device Type",
+              "value": "Server",
+              "type": "string"
+            },
+            {
+              "id": "c741c594-7b7f-4d87-afa1-deed2be0654e",
+              "name": "Time Restored",
+              "value": "={{ $json.time_restored }}",
+              "type": "string"
+            },
+            {
+              "id": "9c118561-bdda-4116-a19e-292c40a1b5b5",
+              "name": "Total Downtime",
+              "value": "={{ $json.total_downtime }}",
+              "type": "string"
+            },
+            {
+              "id": "b150053d-e33d-47e6-a90a-63086f959cfe",
+              "name": "Monitored By",
+              "value": "={{ $json.assignee_name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        -32
+      ],
+      "id": "cf3d7785-0258-486b-9012-6bc393ff2b95",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Code in JavaScript').item.json.target_sheet_name }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Ticket ID"
+          ],
+          "schema": [
+            {
+              "id": "Sensor",
+              "displayName": "Sensor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ticket ID",
+              "displayName": "Ticket ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Device Type",
+              "displayName": "Device Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Server Device",
+              "displayName": "Server Device",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Affected IT Domain",
+              "displayName": "Affected IT Domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Affected IT System",
+              "displayName": "Affected IT System",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Business Impact",
+              "displayName": "Business Impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Diagnosis",
+              "displayName": "Diagnosis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assignee",
+              "displayName": "Assignee",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Start of Downtime",
+              "displayName": "Start of Downtime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time Restored",
+              "displayName": "Time Restored",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Downtime",
+              "displayName": "Total Downtime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Monitored By",
+              "displayName": "Monitored By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        128,
+        -32
+      ],
+      "id": "64c436e9-b05f-41ed-a932-f24355890b98",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "events": [
+          "jira:issue_created",
+          "jira:issue_updated"
+        ],
+        "additionalFields": {
+          "filter": "project = CICT AND reporter = 557058:f58131cb-b67d-43c7-b30d-6b58d40bd077 AND type = \"[System] Incident\" AND created >= startOfMonth() ORDER BY created DESC"
+        }
+      },
+      "type": "n8n-nodes-base.jiraTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        -32
+      ],
+      "id": "70d46c0d-8443-4b07-b9b0-647ba1b928bb",
+      "name": "Jira Trigger",
+      "webhookId": "1c87d7f0-b211-433f-bb64-fbbf3caff2a8",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "taewY0pYea5crzCA",
+          "name": "Jira SW Cloud a-johnrex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "issueKey": "={{ $json.issue?.key || $json.key }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -32
+      ],
+      "id": "5ccb2202-7a4b-489e-b1c5-c2ebfed82426",
+      "name": "Get an issue",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "taewY0pYea5crzCA",
+          "name": "Jira SW Cloud a-johnrex"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jira Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get an issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an issue": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "tags": [
+    {
+      "name": "nocAutomations"
+    }
+  ]
+}

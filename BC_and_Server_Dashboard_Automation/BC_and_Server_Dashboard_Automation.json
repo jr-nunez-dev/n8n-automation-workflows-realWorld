@@ -1,0 +1,606 @@
+{
+  "name": "BC and Server Dashboard Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        -16
+      ],
+      "id": "fb8c14b6-7164-462e-aef9-9a8888456186",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -32,
+        -16
+      ],
+      "id": "2e431d46-2932-4447-982f-b7e34e755d85",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c82dff3-9882-45d0-8e5f-2f3e94841bb3",
+              "name": "Label",
+              "value": "={{ $json.Label }}",
+              "type": "string"
+            },
+            {
+              "id": "a3478c76-1391-48d9-8942-d91249642f8a",
+              "name": "Value",
+              "value": "={{ $json.Value }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        -16
+      ],
+      "id": "f5f31ac9-1ddb-4f9b-aefc-a1a9db8d2600",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "=Business Centers {{ $today.format('MMMM yyyy') }}"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -336,
+        80
+      ],
+      "id": "52f2a0b6-8f0a-467b-92d9-99482824baa4",
+      "name": "Network Devices",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "=PRTG Critical Alerts {{ $today.format('MMMM yyyy') }}"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -336,
+        -160
+      ],
+      "id": "d8cb1d30-a172-415b-af35-729488be0739",
+      "name": "Server Devices",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Dynamically establish date boundaries for Today, Current Week, and Current Month\nconst today = new Date();\n\n// Daily Boundaries (Today at 00:00:00 to Today at 23:59:59)\nconst startOfToday = new Date(today);\nstartOfToday.setHours(0, 0, 0, 0);\n\nconst endOfToday = new Date(today);\nendOfToday.setHours(23, 59, 59, 999);\n\n// Current Week Boundaries (Sunday at 00:00:00 to Saturday at 23:59:59)\nconst currentDay = today.getDay();\nconst startOfWeek = new Date(today);\nstartOfWeek.setDate(today.getDate() - currentDay);\nstartOfWeek.setHours(0, 0, 0, 0);\n\nconst endOfWeek = new Date(today);\nendOfWeek.setDate(today.getDate() - currentDay + 6);\nendOfWeek.setHours(23, 59, 59, 999);\n\n// Current Month Boundaries (1st day to last day of the current month)\nconst startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);\nconst endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);\n\n// 2. Fetch all combined data passing out of your Merge node\nconst allData = $input.all();\n\n// 3. Initialize all counters\nlet totalTickets = 0;\nlet totalServer = 0;\nlet totalNetwork = 0;\n\nlet monthlyServer = 0;\nlet monthlyNetwork = 0;\nlet monthlyTotalTickets = 0;\n\nlet weeklyServerResolved = 0;\nlet weeklyNetworkResolved = 0;\nlet weeklyNetworkInProgress = 0;\nlet weeklyServerInProgress = 0;\n\nlet dailyServerResolved = 0;\nlet dailyNetworkResolved = 0;\nlet dailyNetworkInProgress = 0;\nlet dailyServerInProgress = 0;\n\n// 4. Process each ticket row\nfor (const item of allData) {\n  const row = item.json;\n  if (!row.Date) continue;\n\n  const ticketDate = new Date(row.Date);\n  const deviceType = String(row['Device Type'] || '').trim().toLowerCase();\n  const status = String(row.Status || '').trim().toLowerCase();\n\n  // RULE: Completely exclude Cancelled tickets from being processed/counted\n  if (status === 'cancelled') continue;\n\n  // Safe matching handling for trailing whitespaces\n  const isServer = deviceType.includes('server');\n  const isNetwork = deviceType.includes('network');\n  \n  // RULE 1: Map groups into Resolved vs Closed\n  const isResolved = ['resolved', 'closed'].includes(status);\n\n  // RULE 2: Separate In-Progress text conditions based on device types\n  let isInProgress = false;\n  if (isNetwork) {\n    isInProgress = ['in progress', 'endorse to enterprise support', 'monitoring'].includes(status);\n  } else if (isServer) {\n    isInProgress = ['work in progress', 'waiting for support'].includes(status);\n  }\n\n  // Check which timestamp windows the ticket matches\n  const inCurrentDay = (ticketDate >= startOfToday && ticketDate <= endOfToday);\n  const inCurrentWeek = (ticketDate >= startOfWeek && ticketDate <= endOfWeek);\n  const inCurrentMonth = (ticketDate >= startOfMonth && ticketDate <= endOfMonth);\n\n  // --- OVERALL METRICS ---\n  if (isServer || isNetwork) {\n    totalTickets++;\n    if (isServer) totalServer++;\n    if (isNetwork) totalNetwork++;\n  }\n\n  // --- DAILY METRICS ---\n  if (inCurrentDay) {\n    if (isServer && isResolved) dailyServerResolved++;\n    if (isNetwork && isResolved) dailyNetworkResolved++;\n    \n    if (isNetwork && isInProgress) dailyNetworkInProgress++;\n    if (isServer && isInProgress) dailyServerInProgress++;\n  }\n\n  // --- WEEKLY METRICS ---\n  if (inCurrentWeek) {\n    if (isServer && isResolved) weeklyServerResolved++;\n    if (isNetwork && isResolved) weeklyNetworkResolved++;\n    \n    if (isNetwork && isInProgress) weeklyNetworkInProgress++;\n    if (isServer && isInProgress) weeklyServerInProgress++;\n  }\n\n  // --- MONTHLY METRICS ---\n  if (inCurrentMonth) {\n    if (isServer) monthlyServer++;\n    if (isNetwork) monthlyNetwork++;\n    if (isServer || isNetwork) monthlyTotalTickets++;\n  }\n}\n\n// --- DYNAMIC MATH COHESION ENGINE ---\nconst dailyServerTotal = dailyServerResolved + dailyServerInProgress;\nconst dailyNetworkTotal = dailyNetworkResolved + dailyNetworkInProgress;\nconst dailyTotalTicketsCombined = dailyServerTotal + dailyNetworkTotal;\n\nconst weeklyServerTotal = weeklyServerResolved + weeklyServerInProgress;\nconst weeklyNetworkTotal = weeklyNetworkResolved + weeklyNetworkInProgress;\nconst weeklyCombinedResolved = weeklyServerResolved + weeklyNetworkResolved;\nconst weeklyCombinedInProgress = weeklyServerInProgress + weeklyNetworkInProgress;\nconst weeklyTotalTicketsCombined = weeklyCombinedResolved + weeklyCombinedInProgress;\n\n// 5. Format and return array mapped rows out to the Google Sheet dashboard node\nreturn [\n  { json: { Label: \"📊 GLOBAL MONITORING STATS\", Value: \"\" } }, \n  { json: { Label: \"Total Number of Tickets\", Value: totalTickets } }, \n  { json: { Label: \"Total Device Type: Server\", Value: totalServer } }, \n  { json: { Label: \"Total Device Type: Network\", Value: totalNetwork } }, \n  { json: { Label: \"---\", Value: \"---\" } }, \n\n  { json: { Label: \"📅 WEEKLY STATS (Current Week)\", Value: \"\" } }, \n  { json: { Label: \"Weekly Total Tickets (Combined)\", Value: weeklyTotalTicketsCombined } }, \n  { json: { Label: \"Weekly Servers Monitored\", Value: weeklyServerTotal } }, \n  { json: { Label: \"Weekly Networks Monitored\", Value: weeklyNetworkTotal } }, \n  { json: { Label: \"Weekly Servers Resolved\", Value: weeklyServerResolved } }, \n  { json: { Label: \"Weekly Networks Resolved\", Value: weeklyNetworkResolved } }, \n  { json: { Label: \"Weekly Servers In Progress\", Value: weeklyServerInProgress } }, \n  { json: { Label: \"Weekly Networks In Progress\", Value: weeklyNetworkInProgress } }, \n  { json: { Label: \"Weekly Total Resolved (Combined)\", Value: weeklyCombinedResolved } }, \n  { json: { Label: \"Weekly Total In Progress (Combined)\", Value: weeklyCombinedInProgress } }, \n  { json: { Label: \"---\", Value: \"---\" } }, \n\n  { json: { Label: \"🗓️ MONTHLY STATS (Current Month)\", Value: \"\" } }, \n  { json: { Label: \"Monthly Total Tickets (Combined)\", Value: monthlyTotalTickets } }, \n  { json: { Label: \"Monthly Servers Monitored\", Value: monthlyServer } }, \n  { json: { Label: \"Monthly Networks Monitored\", Value: monthlyNetwork } },\n  { json: { Label: \"---\", Value: \"---\" } }, \n\n  { json: { Label: \"☀️ DAILY STATS (Today)\", Value: \"\" } }, \n  { json: { Label: \"Daily Total Tickets (Combined)\", Value: dailyTotalTicketsCombined } }, \n  { json: { Label: \"Daily Servers Monitored\", Value: dailyServerTotal } }, \n  { json: { Label: \"Daily Servers In Progress\", Value: dailyServerInProgress } }, \n  { json: { Label: \"Daily Servers Resolved\", Value: dailyServerResolved } }, \n  { json: { Label: \"Daily Networks Monitored\", Value: dailyNetworkTotal } }, \n  { json: { Label: \"Daily Networks Resolved\", Value: dailyNetworkResolved } }, \n  { json: { Label: \"Daily Networks In Progress\", Value: dailyNetworkInProgress } } \n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -16
+      ],
+      "id": "0315373c-19cb-4a47-9634-bc35b5205ac7",
+      "name": "Manage Data"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI",
+          "mode": "list",
+          "cachedResultName": "NOC Monitoring Automation Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 723199610,
+          "mode": "list",
+          "cachedResultName": "Status",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oNfAARFuXGxx3i5O7FNm26EaB0ubEAajZAsRjCiPKUI/edit#gid=723199610"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Label"
+          ],
+          "schema": [
+            {
+              "id": "Label",
+              "displayName": "Label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Value",
+              "displayName": "Value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "NOC Automated Dashboard",
+              "displayName": "NOC Automated Dashboard",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        656,
+        -16
+      ],
+      "id": "04539413-a9a3-4fed-8529-93dc6ede7c0e",
+      "name": "Update Dashboard",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "H010SXLa70tPVtng",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9cfa56e8-0cd4-42c2-ae9e-b7d489bece0e",
+              "leftValue": "={{ new Date().getDay() }}",
+              "rightValue": "6",
+              "operator": {
+                "type": "dateTime",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        944,
+        -16
+      ],
+      "id": "47d4576c-7174-493b-aa9a-9e350e6f2967",
+      "name": "Is Saturday?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "476d510a-7fa4-46c6-88fe-1ff35d2e05f7",
+              "leftValue": "={{ new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() === new Date().getDate() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        944,
+        272
+      ],
+      "id": "2fb9ffab-476e-4c1f-b8ce-54c0ca08741f",
+      "name": "Is Last Day of Month?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst getValueOf = (label) => {\n  const match = rows.find(item => item.json && String(item.json.Label).includes(label));\n  return match ? (Number(match.json.Value) || 0) : 0;\n};\n\nconst dailyTotal = getValueOf(\"Daily Total Tickets\");\nconst dailyResolved = getValueOf(\"Daily Servers Resolved\") + getValueOf(\"Daily Networks Resolved\");\nconst dailyInProgress = getValueOf(\"Daily Servers In Progress\") + getValueOf(\"Daily Networks In Progress\");\n\nreturn [{\n  json: {\n    \"cardsV2\": [{\n      \"cardId\": \"daily_noc_card\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"NOC AUTOMATED DASHBOARD\",\n          \"subtitle\": \"Infrastructure Metric Synced\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/monitoring/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"☀️ DAILY PERFORMANCE OVERVIEW\",\n            \"widgets\": [{\n              \"textParagraph\": {\n                \"text\": \"Hi, your dashboard is updated! Here is today's operational summary:<br><br>• Total tickets: <b><font color=\\\"#3498db\\\">\" + dailyTotal + \"</font></b><br>• Resolved: <b><font color=\\\"#2ecc71\\\">\" + dailyResolved + \"</font></b><br>• In Progress: <b><font color=\\\"#e67e22\\\">\" + dailyInProgress + \"</font></b>\"\n              }\n            }]\n          },\n          {\n            \"header\": \"🛡️ MONITORING STATUS NOTES\",\n            \"widgets\": [{\n              \"textParagraph\": {\n                \"text\": \"All primary server and network monitoring arrays remain under active surveillance. Real-time logging calculations are executing normally, ensuring data consistency across all active metric thresholds.\"\n              }\n            }]\n          }\n        ]\n      }\n    }]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        -304
+      ],
+      "id": "9ba0c5aa-03cf-4eb3-bd5b-904141addbab",
+      "name": "Daily"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst getValueOf = (label) => {\n  const match = rows.find(item => item.json && String(item.json.Label).includes(label));\n  return match ? (Number(match.json.Value) || 0) : 0;\n};\n\nconst weeklyTotal = getValueOf(\"Weekly Total Tickets\");\nconst weeklyResolved = getValueOf(\"Weekly Total Resolved\");\nconst weeklyInProgress = getValueOf(\"Weekly Total In Progress\");\n\nreturn [{\n  json: {\n    \"cardsV2\": [{\n      \"cardId\": \"weekly_noc_card\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"NOC AUTOMATED DASHBOARD\",\n          \"subtitle\": \"7-Day Operational Summary\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/calendar_view_week/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"📅 WEEKLY ROLLING OUTLOOK\",\n            \"widgets\": [{\n              \"textParagraph\": {\n                \"text\": \"Hi, your weekly rollup report is ready! Here is the 7-day infrastructure status overview:<br><br>• Total tickets: <b><font color=\\\"#3498db\\\">\" + weeklyTotal + \"</font></b><br>• Resolved: <b><font color=\\\"#2ecc71\\\">\" + weeklyResolved + \"</font></b><br>• In Progress: <b><font color=\\\"#e67e22\\\">\" + weeklyInProgress + \"</font></b>\"\n              }\n            }]\n          },\n          {\n            \"header\": \"🛡️ MONITORING STATUS NOTES\",\n            \"widgets\": [{\n              \"textParagraph\": {\n                \"text\": \"Weekly tracking metrics have been archived and compiled into the master dashboard layout. Logging data holds full consistency across active operations.\"\n              }\n            }]\n          }\n        ]\n      }\n    }]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        -96
+      ],
+      "id": "4262f515-ee15-44fd-87e6-0bacee3595c4",
+      "name": "Weekly"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst getValueOf = (label) => {\n  const match = rows.find(item => item.json && String(item.json.Label).includes(label));\n  return match ? (Number(match.json.Value) || 0) : 0;\n};\n\nconst monthlyTotal = getValueOf(\"Monthly Total Tickets\");\nconst monthlyServer = getValueOf(\"Monthly Servers Monitored\");\nconst monthlyNetwork = getValueOf(\"Monthly Networks Monitored\");\n\nreturn [{\n  json: {\n    \"cardsV2\": [{\n      \"cardId\": \"monthly_noc_card\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"NOC AUTOMATED DASHBOARD\",\n          \"subtitle\": \"30-Day Volume Insights\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/calendar_month/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"🗓️ MONTHLY TARGET TRACKING\",\n            \"widgets\": [{\n              \"textParagraph\": {\n                \"text\": \"Hi, your monthly high-level milestone metrics have synced:<br><br>• Monthly Total Volume: <b><font color=\\\"#3498db\\\">\" + monthlyTotal + \"</font></b><br>• Total Servers Tracked: <b>\" + monthlyServer + \"</b><br>• Total Networks Tracked: <b>\" + monthlyNetwork + \"</b>\"\n              }\n            }]\n          },\n          {\n            \"header\": \"🛡️ MONITORING STATUS NOTES\",\n            \"widgets\": [{\n              \"textParagraph\": {\n                \"text\": \"Monthly baseline operational targets are synced. Long-term trends match the target parameters established for this cycle.\"\n              }\n            }]\n          }\n        ]\n      }\n    }]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        256
+      ],
+      "id": "4f3b81f2-4f54-4035-b0c3-df10238999cb",
+      "name": "Monthly"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AAQAgFTD0iI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=iezyQ66NuKTqrPA3WtDlag8EBzvUFdPH7xmpCTzxWQE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        -96
+      ],
+      "id": "3d084bce-154e-4fda-a406-06b49b0cfa81",
+      "name": "Weekly Update"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AAQAgFTD0iI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=iezyQ66NuKTqrPA3WtDlag8EBzvUFdPH7xmpCTzxWQE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        256
+      ],
+      "id": "71e8c935-231a-49e1-b5d4-b984142f2f4f",
+      "name": "Monthly Update"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AAQAgFTD0iI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=iezyQ66NuKTqrPA3WtDlag8EBzvUFdPH7xmpCTzxWQE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        -304
+      ],
+      "id": "3e6e74a7-d52f-4a8b-8e90-3419d5b73e16",
+      "name": "Daily Update"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        -304
+      ],
+      "id": "22a6b689-cc91-49b3-ad75-d87a15fe66c6",
+      "name": "Wait",
+      "webhookId": "daad3a41-d7fb-4723-8dc9-319c6c456329"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        80
+      ],
+      "id": "a253e3f1-1d31-4967-a558-5936845bdf2b",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        432
+      ],
+      "id": "0c10bb53-bbe7-4dbb-88a1-df5187c09781",
+      "name": "No Operation, do nothing1"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Server Devices",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Network Devices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Manage Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Update Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Network Devices": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Server Devices": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manage Data": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Is Saturday?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Last Day of Month?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Saturday?": {
+      "main": [
+        [
+          {
+            "node": "Weekly",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Last Day of Month?": {
+      "main": [
+        [
+          {
+            "node": "Monthly",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly": {
+      "main": [
+        [
+          {
+            "node": "Weekly Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monthly": {
+      "main": [
+        [
+          {
+            "node": "Monthly Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily": {
+      "main": [
+        [
+          {
+            "node": "Daily Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Singapore",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "nocAutomations"
+    }
+  ]
+}
