@@ -1,0 +1,641 @@
+{
+  "name": "BC Intermittent & Slow Connection Issue Automation copy",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "55f6833d-1166-4bfe-8ff0-5beecd6eac33",
+              "leftValue": "={{ $json.subject }}",
+              "rightValue": "intermittent",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        -48
+      ],
+      "id": "9607c16d-7517-4a50-aa8e-06ec796446be",
+      "name": "intermittent?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -48
+      ],
+      "id": "c993e8d5-19e3-4ccc-b51e-28ab5114b022",
+      "name": "disregardTicket"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fbfdc5e-ec4f-47ba-9b86-91790d8db22f",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "00015e99-9ed8-4ba6-aad2-66ada0f04b68",
+              "name": "description",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        -304
+      ],
+      "id": "49849129-a924-4da6-a8bb-77619e4c7f9e",
+      "name": "editDataForIntermittent"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "66787d29-03f7-40ed-bd13-4ecfc08ca782",
+              "leftValue": "={{ $json.headers['in-reply-to'] }}",
+              "rightValue": "={{ $json.threadId }}",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        -192
+      ],
+      "id": "bb2cd152-0156-4abe-8f3b-00439362b03d",
+      "name": "freshIntermittentEmail?"
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "issueType": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "summary": "={{ $json.subject }}",
+        "additionalFields": {
+          "description": "={{ $json.description }}"
+        }
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -304
+      ],
+      "id": "ad800490-6dd7-4dfc-aca3-405969499a73",
+      "name": "createIssueIntermittent",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "AfhBBa5w9ydSfdin",
+          "name": "Jira Cloud account - clean"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "812b2570-8f0c-44f1-99b2-dee1ccab253a",
+              "leftValue": "={{ $json.headers['in-reply-to'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        96
+      ],
+      "id": "afb621b0-74c1-426c-8750-750bb001e339",
+      "name": "freshSlowConnectionEmail?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f3749d1f-daa5-4ccb-8202-4590a323c35d",
+              "name": "Summary",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "891676f6-1938-4df6-bd2b-ded6c1b1a494",
+              "name": "Description",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        192
+      ],
+      "id": "093782a5-c4c3-43a2-8f61-c9418b09fdaf",
+      "name": "editDataForSlowConnection"
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "issueType": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "summary": "={{ $json.Summary }}",
+        "additionalFields": {
+          "description": "={{ $json.Description }}"
+        }
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        784,
+        192
+      ],
+      "id": "84e98289-0d5c-465d-ae0f-3429ba5e377c",
+      "name": "createSlowConnectionIssue",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "AfhBBa5w9ydSfdin",
+          "name": "Jira Cloud account - clean"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "maxResults": 1,
+        "filters": {
+          "labelIds": [
+            "Label_8663571737587485244"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        48
+      ],
+      "id": "b25c4585-93a6-4d00-a70d-c3a02b080da3",
+      "name": "intermittent",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MeBRcusvCN3r6gJv",
+          "name": "Gmail account clean"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "maxResults": 1,
+        "filters": {
+          "labelIds": [
+            "Label_8822667461471772504"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        -144
+      ],
+      "id": "5f41e0df-d06f-465d-88a8-5b96c92e0a67",
+      "name": "slowConnection",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MeBRcusvCN3r6gJv",
+          "name": "Gmail account clean"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "404738c6-6c2a-4222-aec9-3a6826658f07",
+              "name": "Subject",
+              "value": "={{ $('intermittent?').item.json.headers.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "a34a1574-c50e-4881-ad66-69067d8782dc",
+              "name": "Description",
+              "value": "={{ $('intermittent?').item.json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        -64
+      ],
+      "id": "86c09a12-1d7d-4c73-b5b6-a478dfe1eb6b",
+      "name": "getData"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const json = item.json;\n  \n  // Get Raw Subject/Summary and Description\n  const rawSummary = json.Subject || json.summary || \"\";\n  const description = json.Description || json.description || \"\";\n\n  // Clean Summary by removing \"Subject: \" prefix if present\n  const summary = rawSummary.replace(/^Subject:\\s*/i, '').trim();\n\n  // 1. Flexible Date & Time extraction (handles optional seconds like 4/11/2026 10:46 am or 7/20/2026 8:15:42 PM)\n  const dateTimeRegex = /(\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}(?::\\d{2})?\\s*(?:AM|PM))/i;\n  const dateTimeMatch = description.match(dateTimeRegex);\n  const dateTime = dateTimeMatch ? dateTimeMatch[1] : \"\";\n\n  // 2. Extract Diagnosis (case-insensitive)\n  const diagnosisRegex = /(Slow Connection|Intermittent)/i;\n  const diagnosisMatch = summary.match(diagnosisRegex);\n  const diagnosis = diagnosisMatch ? diagnosisMatch[1] : \"\";\n\n  // Split summary segments by pipe\n  const parts = summary.split('|').map(p => p.trim());\n\n  // Filter out STATUS tags, date tags (e.g. 04112026), and TEST tags\n  const candidates = parts.filter(part => {\n    const isStatus = /Status:/i.test(part) || diagnosisRegex.test(part);\n    const isDateTag = /^\\d{6,8}$/.test(part);\n    const isTest = /^TEST$/i.test(part);\n    return !isStatus && !isDateTag && !isTest && part.length > 0;\n  });\n\n  let location = \"\";\n  let networkDevice = \"\";\n\n  // Look specifically for candidate containing parentheses e.g. \"SLZ - Imus BC (CICTBC_IMU_AS01)\"\n  const deviceCandidateIndex = candidates.findIndex(c => /\\(.*\\)/.test(c));\n\n  if (deviceCandidateIndex !== -1) {\n    networkDevice = candidates[deviceCandidateIndex];\n    // Remaining candidates before the device candidate form the Location\n    location = candidates.slice(0, deviceCandidateIndex).join(' | ');\n  } else {\n    // Fallback if no candidate contains parentheses\n    if (candidates.length === 1) {\n      location = candidates[0];\n    } else if (candidates.length >= 2) {\n      location = candidates[0];\n      networkDevice = candidates[1];\n    }\n  }\n\n  // 4. Extract Date only\n  const dateOnly = dateTime ? dateTime.split(' ')[0] : \"\";\n\n  return {\n    json: {\n      summary: summary,\n      dateTime: dateTime,\n      diagnosis: diagnosis,\n      location: location,\n      date: dateOnly,\n      networkDevice: networkDevice\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -64
+      ],
+      "id": "dc14ef41-a97f-4fa7-adad-72e7ab234365",
+      "name": "parseData"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f4ae40c4-2207-4afe-a472-285652c0c8a2",
+              "name": "Ticket ID",
+              "value": "={{ $('getData').item.json.key }}",
+              "type": "string"
+            },
+            {
+              "id": "31df1cd9-5ca6-41b6-9887-4b948dbfbe78",
+              "name": "Date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "1293dca4-2616-4e50-8789-12323ff58463",
+              "name": "Device Type",
+              "value": "=Network",
+              "type": "string"
+            },
+            {
+              "id": "d7a19a83-b408-4931-8aee-007b1a0f6039",
+              "name": "Network Device",
+              "value": "={{ $json.networkDevice }}",
+              "type": "string"
+            },
+            {
+              "id": "67194efd-1d5a-41e3-87f0-8635b5552d26",
+              "name": "Description",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "e1ff5ac9-7e09-4355-b70f-b5b1c79e00fd",
+              "name": "Status",
+              "value": "Open",
+              "type": "string"
+            },
+            {
+              "id": "60d8120a-3ebd-42c6-9969-4f1398a8aff5",
+              "name": "Affected IT System",
+              "value": "NETWORK",
+              "type": "string"
+            },
+            {
+              "id": "c765daf0-9b99-48d9-aa4b-604f555ed713",
+              "name": "Business Impact",
+              "value": "UNPLANNED & BUSINESS AFFECTING",
+              "type": "string"
+            },
+            {
+              "id": "308f2774-411a-48b5-975b-e8dd1c330860",
+              "name": "Diagnosis",
+              "value": "={{ $json.diagnosis }}",
+              "type": "string"
+            },
+            {
+              "id": "8beb5c71-6af5-4395-89f6-a245911e36be",
+              "name": "Start of Downtime",
+              "value": "={{ $json.dateTime }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        -64
+      ],
+      "id": "078e45bc-ff40-4b2f-932f-a5fe65e5b1e7",
+      "name": "enrichParseData"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "",
+          "cachedResultName": "",
+          "cachedResultUrl": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1648,
+        -64
+      ],
+      "id": "1d681afa-d511-4d57-b6b0-98b8353efd00",
+      "name": "logData",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZOKNdBlDKBo2sr3N",
+          "name": "Google Sheets account clean"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "intermittent?": {
+      "main": [
+        [
+          {
+            "node": "freshIntermittentEmail?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "freshSlowConnectionEmail?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "editDataForIntermittent": {
+      "main": [
+        [
+          {
+            "node": "createIssueIntermittent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "freshIntermittentEmail?": {
+      "main": [
+        [
+          {
+            "node": "editDataForIntermittent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "disregardTicket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createIssueIntermittent": {
+      "main": [
+        [
+          {
+            "node": "getData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "freshSlowConnectionEmail?": {
+      "main": [
+        [
+          {
+            "node": "editDataForSlowConnection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "disregardTicket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "editDataForSlowConnection": {
+      "main": [
+        [
+          {
+            "node": "createSlowConnectionIssue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "intermittent": {
+      "main": [
+        [
+          {
+            "node": "intermittent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slowConnection": {
+      "main": [
+        [
+          {
+            "node": "intermittent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "createSlowConnectionIssue": {
+      "main": [
+        [
+          {
+            "node": "getData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getData": {
+      "main": [
+        [
+          {
+            "node": "parseData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parseData": {
+      "main": [
+        [
+          {
+            "node": "enrichParseData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enrichParseData": {
+      "main": [
+        [
+          {
+            "node": "logData",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Manila",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "9e0eb6d1-0bd5-46e7-ad5f-c322faee5460",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dff061bc3c380400a4adcd35369e48669eb2b46de5ce5cb4effb0d2c7761d8e2"
+  },
+  "nodeGroups": [],
+  "id": "YbzXavsvrW7OF0MC",
+  "tags": []
+}
