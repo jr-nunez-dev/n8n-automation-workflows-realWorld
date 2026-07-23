@@ -1,0 +1,563 @@
+{
+  "name": "P1 Automated GChat Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AZXQAzAUZYXOA/messages?key=jshdfgjwe4u8tq872345chqqcjw-WEfRq3CPzqKqqsHI&token=isjdfblkvf934g894w839qvPY_Sm5DtFraP4Y9d3-4oWh7r0",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cardsV2\": [\n    {\n      \"cardId\": \"jiraWaitingCard\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"⏳ P1 ticket has been updated to Waiting for Customer by {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\",\n          \"subtitle\": \"Ticket: {{ $json.ticket_id }}\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/pending/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"Ticket Summary\",\n            \"widgets\": [\n              {\n                \"textParagraph\": {\n                  \"text\": \"<b>{{ $json.summary }}</b>\"\n                }\n              }\n            ]\n          },\n          {\n            \"header\": \"Details & Assignment\",\n            \"widgets\": [\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"PERSON\" },\n                  \"text\": \"<b>Assignee:</b> {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Created:</b> {{ $json.time_created }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Updated:</b> {{ $json.time_updated }}\"\n                }\n              }\n            ]\n          },\n          {\n            \"widgets\": [\n              {\n                \"buttonList\": {\n                  \"buttons\": [\n                    {\n                      \"text\": \"👉 Open Ticket\",\n                      \"onClick\": {\n                        \"openLink\": { \"url\": \"https://convergeict.atlassian.net/browse/{{ $json.ticket_id }}\" }\n                      }\n                    }\n                  ]\n                }\n              }\n            ]\n          }\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        -288
+      ],
+      "id": "48c583e7-3825-4af7-8c16-47debb23d0a5",
+      "name": "Waiting for customer"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AZXQAzAUZYXOA/messages?key=jshdfgjwe4u8tq872345chqqcjw-WEfRq3CPzqKqqsHI&token=isjdfblkvf934g894w839qvPY_Sm5DtFraP4Y9d3-4oWh7r0",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cardsV2\": [\n    {\n      \"cardId\": \"jiraWIPCard\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"⚙️ P1 ticket has been updated to Work in Progress by {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\",\n          \"subtitle\": \"Ticket: {{ $json.ticket_id }}\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/build/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"Ticket Summary\",\n            \"widgets\": [\n              {\n                \"textParagraph\": {\n                  \"text\": \"<b>{{ $json.summary }}</b>\"\n                }\n              }\n            ]\n          },\n          {\n            \"header\": \"Details & Assignment\",\n            \"widgets\": [\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"PERSON\" },\n                  \"text\": \"<b>Assignee:</b> {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Created:</b> {{ $json.time_created }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Updated:</b> {{ $json.time_updated }}\"\n                }\n              }\n            ]\n          },\n          {\n            \"widgets\": [\n              {\n                \"buttonList\": {\n                  \"buttons\": [\n                    {\n                      \"text\": \"👉 Open Ticket\",\n                      \"onClick\": {\n                        \"openLink\": { \"url\": \"https://convergeict.atlassian.net/browse/{{ $json.ticket_id }}\" }\n                      }\n                    }\n                  ]\n                }\n              }\n            ]\n          }\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        -80
+      ],
+      "id": "c90bf8d8-8901-41d8-abf3-97c9bb5ee14c",
+      "name": "Work in progress"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AZXQAzAUZYXOA/messages?key=jshdfgjwe4u8tq872345chqqcjw-WEfRq3CPzqKqqsHI&token=isjdfblkvf934g894w839qvPY_Sm5DtFraP4Y9d3-4oWh7r0",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cardsV2\": [\n    {\n      \"cardId\": \"jiraOpenCard\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"🚨 P1 ticket has been created!\",\n          \"subtitle\": \"Ticket: {{ $json.ticket_id }} | Status: {{ $json.status }}\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/error/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"Ticket Summary\",\n            \"widgets\": [\n              {\n                \"textParagraph\": {\n                  \"text\": \"<b>{{ $json.summary }}</b>\"\n                }\n              }\n            ]\n          },\n          {\n            \"header\": \"Details & Assignment\",\n            \"widgets\": [\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"PERSON\" },\n                  \"text\": \"<b>Assignee:</b> {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Created:</b> {{ $json.time_created }}\"\n                }\n              }\n            ]\n          },\n          {\n            \"widgets\": [\n              {\n                \"buttonList\": {\n                  \"buttons\": [\n                    {\n                      \"text\": \"👉 Open Ticket\",\n                      \"onClick\": {\n                        \"openLink\": { \"url\": \"https://convergeict.atlassian.net/browse/{{ $json.ticket_id }}\" }\n                      }\n                    }\n                  ]\n                }\n              }\n            ]\n          }\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -304,
+        -224
+      ],
+      "id": "194ad1fc-2aba-4c1c-8288-02fccc9764e4",
+      "name": "Open ticket"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AZXQAzAUZYXOA/messages?key=jshdfgjwe4u8tq872345chqqcjw-WEfRq3CPzqKqqsHI&token=isjdfblkvf934g894w839qvPY_Sm5DtFraP4Y9d3-4oWh7r0",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cardsV2\": [\n    {\n      \"cardId\": \"jiraResolvedCard\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"✅ P1 ticket has been Resolved by {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\",\n          \"subtitle\": \"Ticket: {{ $json.ticket_id }}\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/check_circle/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"Ticket Summary\",\n            \"widgets\": [\n              {\n                \"textParagraph\": {\n                  \"text\": \"<b>{{ $json.summary }}</b>\"\n                }\n              }\n            ]\n          },\n          {\n            \"header\": \"Details & Assignment\",\n            \"widgets\": [\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"PERSON\" },\n                  \"text\": \"<b>Resolver:</b> {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Created:</b> {{ $json.time_created }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Updated:</b> {{ $json.time_updated }}\"\n                }\n              }\n            ]\n          },\n          {\n            \"widgets\": [\n              {\n                \"buttonList\": {\n                  \"buttons\": [\n                    {\n                      \"text\": \"👉 Open Ticket\",\n                      \"onClick\": {\n                        \"openLink\": { \"url\": \"https://convergeict.atlassian.net/browse/{{ $json.ticket_id }}\" }\n                      }\n                    }\n                  ]\n                }\n              }\n            ]\n          }\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        160
+      ],
+      "id": "e3827c54-a0b5-44ac-ac9a-b93e65f2e677",
+      "name": "Resolved"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AZXQAzAUZYXOA/messages?key=jshdfgjwe4u8tq872345chqqcjw-WEfRq3CPzqKqqsHI&token=isjdfblkvf934g894w839qvPY_Sm5DtFraP4Y9d3-4oWh7r0",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cardsV2\": [\n    {\n      \"cardId\": \"jiraCanceledCard\",\n      \"card\": {\n        \"header\": {\n          \"title\": \"⚪ P1 ticket has been Canceled by {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\",\n          \"subtitle\": \"Ticket: {{ $json.ticket_id }}\",\n          \"imageUrl\": \"https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/cancel/default/48px.svg\",\n          \"imageType\": \"CIRCLE\"\n        },\n        \"sections\": [\n          {\n            \"header\": \"Ticket Summary\",\n            \"widgets\": [\n              {\n                \"textParagraph\": {\n                  \"text\": \"<b>{{ $json.summary }}</b>\"\n                }\n              }\n            ]\n          },\n          {\n            \"header\": \"Details & Assignment\",\n            \"widgets\": [\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"PERSON\" },\n                  \"text\": \"<b>Assignee:</b> {{ $json.assignee === '👥 Unassigned' || !$json.assignee ? 'Unassigned' : $json.assignee }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Created:</b> {{ $json.time_created }}\"\n                }\n              },\n              {\n                \"decoratedText\": {\n                  \"startIcon\": { \"knownIcon\": \"CLOCK\" },\n                  \"text\": \"<b>Updated:</b> {{ $json.time_updated }}\"\n                }\n              }\n            ]\n          },\n          {\n            \"widgets\": [\n              {\n                \"buttonList\": {\n                  \"buttons\": [\n                    {\n                      \"text\": \"👉 Open Ticket\",\n                      \"onClick\": {\n                        \"openLink\": { \"url\": \"https://convergeict.atlassian.net/browse/{{ $json.ticket_id }}\" }\n                      }\n                    }\n                  ]\n                }\n              }\n            ]\n          }\n        ]\n      }\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        368
+      ],
+      "id": "f36ab447-abec-413d-9ad7-2366d2cef423",
+      "name": "Cancel"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        192
+      ],
+      "id": "a33bdfc8-7d92-4321-bfe6-e0867d1383db",
+      "name": "Not P1 alert"
+    },
+    {
+      "parameters": {
+        "events": [
+          "jira:issue_created",
+          "jira:issue_updated"
+        ],
+        "additionalFields": {
+          "filter": "project = CICT AND reporter = 557058:f58131cb-b67d-43c7-b30d-6b58d40bd077 AND type = \"[System] Incident\" AND (status CHANGED OR created >= -1m) ORDER BY created DESC"
+        }
+      },
+      "type": "n8n-nodes-base.jiraTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1584,
+        48
+      ],
+      "id": "24db9c25-73c8-4d88-8380-baa59459e309",
+      "name": "Jira Trigger",
+      "webhookId": "9ab2a9ed-7734-42dd-956a-ea40e2e25116",
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "taewY0pYea5crzCA",
+          "name": "Jira SW Cloud a-johnrex"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.ticket_id }}-{{ $json.status }}",
+        "options": {
+          "scope": "workflow",
+          "historySize": 10000
+        }
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        48
+      ],
+      "id": "0c8c5e29-8588-4ee9-889c-0e9780a28f4a",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        352
+      ],
+      "id": "f8f484dd-1412-40aa-b02d-952d7e15694b",
+      "name": "Error/Slowness"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "328ba91c-8285-4719-9ed3-863900c6e2f8",
+              "leftValue": "={{ $json.webhook_action }}",
+              "rightValue": "CREATED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -560,
+        -112
+      ],
+      "id": "f54216fe-56ba-4165-95d2-c211d9ef327c",
+      "name": "Open or Update?",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "292796a1-6f70-4af5-8712-0e70f154559f",
+              "leftValue": "={{ $json.summary }}",
+              "rightValue": "P1 Alert",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -800,
+        32
+      ],
+      "id": "572c3656-61c7-4228-b08c-87a4de02a2e4",
+      "name": "P1 Only!",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const isTrigger = item.json.issue ? true : false;\n  \n  const issueKey = isTrigger ? item.json.issue.key : item.json.key;\n  const fields = isTrigger ? (item.json.issue.fields || {}) : (item.fields || {});\n\n  const formatTime = (timeStr) => {\n    if (!timeStr || timeStr === 'N/A') return 'N/A';\n    return timeStr.replace('T', ' ').split('.')[0];\n  };\n\n  const statusName = fields.status ? fields.status.name : 'N/A';\n\n  // --- THE LIMITER: Group matches into a rolling 3-second window ---\n  const throttleWindow = Math.floor(Date.now() / 3000); \n\n  // --- NEW: Lifecycle Detector ---\n  // Converts Jira's raw created and updated ISO strings to unix timestamps (milliseconds)\n  const createdMs = fields.created ? new Date(fields.created).getTime() : 0;\n  const updatedMs = fields.updated ? new Date(fields.updated).getTime() : 0;\n\n  // If the creation time and update time match within 2 seconds, it's a \"Created\" event.\n  // Otherwise, if updatedMs is significantly larger, it's an \"Updated\" event.\n  const isCreated = Math.abs(updatedMs - createdMs) < 2000;\n\n  return {\n    json: {\n      ticket_id: issueKey || 'N/A',\n      summary: fields.summary || 'No Summary',\n      assignee: fields.assignee ? fields.assignee.displayName : '👥 Unassigned',\n      status: statusName,\n      time_created: formatTime(fields.created),\n      time_updated: formatTime(fields.updated),\n      throttle_id: `${issueKey}-${statusName}-${throttleWindow}`,\n      \n      // --- NEW STATE OUTPUTS ---\n      webhook_action: isCreated ? \"CREATED\" : \"UPDATED\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        48
+      ],
+      "id": "af8faed2-6a8e-440e-ab14-1a0231d55c38",
+      "name": "Extract info"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1392,
+        48
+      ],
+      "id": "1d7c7756-c7e9-42d9-b054-982ea6e10f6b",
+      "name": "Dup Manipulator",
+      "webhookId": "743645c3-ea19-4716-a5f9-69e2cdb51738"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chat.googleapis.com/v1/spaces/AZXQAzAUZYXOA/messages?key=jshdfgjwe4u8tq872345chqqcjw-WEfRq3CPzqKqqsHI&token=isjdfblkvf934g894w839qvPY_Sm5DtFraP4Y9d3-4oWh7r0",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "error message",
+              "value": "={{ $node[\"P1 Only!\"].passed ? \"⚠️ n8n Workflow Error Alert ⚠️\\n\\nNode with error: \" + $node[\"Open or Update?\"].name + \"\\nError Message: \" + ($json.error?.message || 'Unknown error occurred.') : \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -800,
+        -208
+      ],
+      "id": "1ff0bac5-156a-49a2-8b42-5d8408281641",
+      "name": "Error Message"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8063c011-ca78-4eaa-b1eb-1764240f2056",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "Waiting for support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "25953cbc-53ba-44b2-b756-ea861f3d46c8",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "Work in progress",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "cf32d660-6eb4-484d-9337-ccd5bdf88a2f",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "Resolved",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "abc46863-ea55-44dc-b996-0567b026b762",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "Cancel",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0ce93287-ecaa-4fc2-947a-680b4d2429fe",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        0
+      ],
+      "id": "8db4536e-1a24-4a4c-b982-97972ea4cecc",
+      "name": "switchUpdates"
+    }
+  ],
+  "connections": {
+    "Resolved": {
+      "main": [
+        []
+      ]
+    },
+    "Jira Trigger": {
+      "main": [
+        [
+          {
+            "node": "Dup Manipulator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "P1 Only!",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open or Update?": {
+      "main": [
+        [
+          {
+            "node": "Open ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "switchUpdates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "P1 Only!": {
+      "main": [
+        [
+          {
+            "node": "Open or Update?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not P1 alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract info": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dup Manipulator": {
+      "main": [
+        [
+          {
+            "node": "Extract info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "switchUpdates": {
+      "main": [
+        [
+          {
+            "node": "Waiting for customer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Work in progress",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error/Slowness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Taipei",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    {
+      "name": "nocAutomations"
+    }
+  ]
+}
